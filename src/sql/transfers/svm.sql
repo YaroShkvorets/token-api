@@ -1,4 +1,31 @@
-WITH filtered_transfers AS
+WITH
+    arrayFilter(x -> x != '', {signature:Array(String)}) AS signatures,
+    arrayFilter(x -> x != '', {authority:Array(String)}) AS authorities,
+    arrayFilter(x -> x != '', {mint:Array(String)}) AS mints,
+    arrayFilter(x -> x != '', {source:Array(String)}) AS sources,
+    arrayFilter(x -> x != '', {destination:Array(String)}) AS destinations,
+    arrayDistinct(arrayConcat( sources, destinations )) AS addresses,
+
+minutes_by_address AS (
+    SELECT minute
+    FROM transfers_by_source
+    WHERE {source:Array(String)} != [''] OR source IN {source:Array(String)}
+    GROUP BY minute
+
+    UNION ALL
+
+    SELECT minute
+    FROM transfers_by_destination
+    WHERE {destination:Array(String)} != [''] OR destination IN {destination:Array(String)}
+    GROUP BY minute
+),
+minutes_by_mint AS (
+    SELECT minute
+    FROM transfers_by_mint
+    WHERE mint IN mints
+    GROUP BY minute
+),
+filtered_transfers AS
 (
     SELECT
         block_num,
@@ -21,7 +48,9 @@ WITH filtered_transfers AS
     FROM transfers t
     PREWHERE
         timestamp BETWEEN {start_time: UInt64} AND {end_time: UInt64}
-        AND block_num BETWEEN {start_block: UInt64} AND {end_block: UInt64}
+        AND block_num BETWEEN {start_block: UInt64} AND {end_block: UInt64} AND
+        ({mint:Array(String)} = [''] OR toRelativeMinuteNum(timestamp) IN minutes_by_mint) AND
+        ({source:Array(String)} = [''] OR toRelativeMinuteNum(timestamp) IN minutes_by_address)
     WHERE
         ({signature:Array(String)} = [''] OR signature IN {signature:Array(String)})
         AND ({source:Array(String)} = [''] OR source IN {source:Array(String)})
@@ -43,7 +72,7 @@ metadata AS
     FROM metadata_view
     WHERE metadata IN (
         SELECT metadata
-        FROM metadata_mint_state_latest
+        FROM metadata_mint_state
         JOIN filtered_transfers USING mint
         GROUP BY metadata
     )

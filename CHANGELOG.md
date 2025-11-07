@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.5.4
+
+### Patch Changes
+
+- 13e8870: Migrate from hono-openapi v0 to v1
+
 ## [3.5.3] - 2024-11-07
 
 ### Fixed

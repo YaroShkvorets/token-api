@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.5.5
+
+### Patch Changes
+
+- 3af3392: PR
+
 ## 3.5.4
 
 ### Patch Changes

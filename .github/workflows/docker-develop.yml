@@ -4,10 +4,10 @@ on:
     push:
         branches:
             - main
+            - develop
 
 env:
     REGISTRY: ghcr.io
-    IMAGE_NAME: ${{ github.repository }}
 
 jobs:
     docker:
@@ -27,12 +27,26 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ github.repository }}
+                  tags: |
+                      type=sha,prefix=,suffix=-{{date 'X'}}
+                      type=raw,value=develop
+
+            - name: Set build date
+              run: echo "GIT_DATE=$(git log -1 --format=%cd --date=short)" >> $GITHUB_ENV
+
             - name: Build and push
               uses: docker/build-push-action@v6
               with:
                   context: .
                   push: true
-                  tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
                   build-args: |
                       GIT_COMMIT=${{ github.sha }}
                       GIT_REPOSITORY=${{ github.repository }}
+                      GIT_DATE=${{ env.GIT_DATE }}

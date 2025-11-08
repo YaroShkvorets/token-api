@@ -4,7 +4,8 @@ on:
     push:
         branches:
             - main
-            - develop
+    release:
+        types: [published]
 
 env:
     REGISTRY: ghcr.io
@@ -12,6 +13,10 @@ env:
 jobs:
     docker:
         runs-on: ubuntu-latest
+        # Run on branch pushes OR pre-releases (with '-' in tag)
+        if: |
+            github.event_name == 'push' ||
+            (github.event_name == 'release' && (github.event.release.prerelease == true || contains(github.event.release.tag_name, '-')))
         permissions:
             contents: read
             packages: write
@@ -33,8 +38,9 @@ jobs:
               with:
                   images: ${{ env.REGISTRY }}/${{ github.repository }}
                   tags: |
-                      type=sha,prefix=,suffix=-{{date 'X'}}
-                      type=raw,value=develop
+                      type=sha,prefix=,suffix=-{{date 'X'}},enable=${{ github.event_name == 'push' }}
+                      type=raw,value=develop,enable=${{ github.event_name == 'push' }}
+                      type=semver,pattern={{raw}},enable=${{ github.event_name == 'release' }}
 
             - name: Set build date
               run: echo "GIT_DATE=$(git log -1 --format=%cd --date=short)" >> $GITHUB_ENV
